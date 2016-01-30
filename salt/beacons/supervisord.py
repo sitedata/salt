@@ -50,9 +50,9 @@ def beacon(config):
               myapp1:
 		        emitatstartup: False
               myapp2:
-            user: None
-            conf_file: None
-            bin_env: None
+            user:
+            conf_file:
+            bin_env:
 
     The config above sets up beacons to check for
     the myapp1 and myapp2 supervisord processes.
