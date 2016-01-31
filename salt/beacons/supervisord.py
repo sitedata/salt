@@ -79,7 +79,7 @@ def beacon(config):
            continue
 
         ret_dict = {}
-        ret_dict[process] = {'state': all_processes.get(process)['state']}
+        ret_dict[process] = {'state': all_processes[process]['state']}
 
         # default parameters
         _defaults = {
@@ -93,17 +93,18 @@ def beacon(config):
 
         # Including PID when supervisord program state is RUNNING
         if ret_dict[process]['state'] == "RUNNING":
-            pid, status = all_processes.get(process)['reason'].split(",")
+            pid, status = all_processes[process]['reason'].split(",")
             ret_dict[process]['pid'] = pid
 
-        # We use process_uid in LAST_STATUS dictionary.
+        # We use process_uid as key in LAST_STATUS dictionary.
         # Programs can coexist in different enviroments with identical name
-        process_uid = "{}-{}-{}-{}".format(
+        process_uid = [
             process,
             config.get("user"),
             config.get("conf_file"),
             config.get("bin_env")
-        )
+        ]
+        process_uid = "-".join(str(x) for x in process_uid)
 
         # Emit the 'emitatstartup' event only if it's the first time
         # for this process_uid
