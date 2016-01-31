@@ -22,14 +22,9 @@ def validate(config):
         log.info('Configuration for supervisord beacon must be a dictionary.')
         return False
 
-    # programs dict is mandatory
-    if not config.get('programs'):
-        log.info('Configuration for supervisord must contains programs.')
-        return False
-
     # Each program must be defined as dict
-    for program in config['programs']:
-        if not isinstance(config['programs'][program], dict):
+    for program in config:
+        if not isinstance(config[program], dict):
             log.info('program configuration for supervisord beacon must be a dict.')
             return False
 
@@ -46,13 +41,15 @@ def beacon(config):
 
         beacons:
           supervisord:
-            programs:
-              myapp1:
-		        emitatstartup: False
-              myapp2:
-            user:
-            conf_file:
-            bin_env:
+            myapp1:
+              emitatstartup: False
+            myapp2:
+              emitatstartup: True
+              onstatuschange: False
+              user:
+              conf_file:
+              bin_env:
+
 
     The config above sets up beacons to check for
     the myapp1 and myapp2 supervisord processes.
@@ -67,19 +64,21 @@ def beacon(config):
                          'install supervisord?'
         return ret
 
-    all_processes = __salt__['supervisord.status'](
-        user=config.get('user'),
-        conf_file=config.get('conf_file'),
-        bin_env=config.get('bin_env'),
-    )
+    for process in config:
+        process_status = __salt__['supervisord.status'](
+            process,
+            user=config[process].get('user'),
+            conf_file=config[process].get('conf_file'),
+            bin_env=config[process].get('bin_env'),
+        )
 
-    for process in config['programs']:
-        if not all_processes.get(process):
-           log.info('supervisord program "{}" is not defined in configuration'.format(process))
+        if not process in process_status:
+           log.info('supervisordprogram "{}" is not defined in ' \
+                    'configuration'.format(process))
            continue
 
         ret_dict = {}
-        ret_dict[process] = {'state': all_processes[process]['state']}
+        ret_dict[process] = {'state': process_status[process]['state']}
 
         # default parameters
         _defaults = {
@@ -88,36 +87,26 @@ def beacon(config):
         }
 
         # If no parameters are provided, defaults are assigned
-        if config['programs'][process] is None:
-            config['programs'][process] = _defaults
+        if config[process] is None:
+            config[process] = _defaults
 
         # Including PID when supervisord program state is RUNNING
         if ret_dict[process]['state'] == "RUNNING":
-            pid, status = all_processes[process]['reason'].split(",")
+            pid, status = process_status[process]['reason'].split(",")
             ret_dict[process]['pid'] = pid
-
-        # We use process_uid as key in LAST_STATUS dictionary.
-        # Programs can coexist in different enviroments with identical name
-        process_uid = [
-            process,
-            config.get("user"),
-            config.get("conf_file"),
-            config.get("bin_env")
-        ]
-        process_uid = "-".join(str(x) for x in process_uid)
 
         # Emit the 'emitatstartup' event only if it's the first time
         # for this process_uid
-        if process_uid not in LAST_STATUS:
-            LAST_STATUS[process_uid] = ret_dict[process].copy()
-            if config['programs'][process].get('emitatstartup', _defaults['emitatstartup']):
+        if process not in LAST_STATUS:
+            LAST_STATUS[process] = ret_dict[process].copy()
+            if config[process].get('emitatstartup', _defaults['emitatstartup']):
                 ret_dict[process]['emitatstartup'] = True
                 ret.append(ret_dict)
                 continue
 
-        if LAST_STATUS[process_uid] != ret_dict[process]:
-            LAST_STATUS[process_uid] = ret_dict[process].copy()
-            if config['programs'][process].get('onstatuschange', _defaults['onstatuschange']):
+        if LAST_STATUS[process] != ret_dict[process]:
+            LAST_STATUS[process] = ret_dict[process].copy()
+            if config[process].get('onstatuschange', _defaults['onstatuschange']):
                 ret_dict[process]['onstatuschange'] = True
                 ret.append(ret_dict)
 
