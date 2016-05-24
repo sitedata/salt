@@ -1585,6 +1585,10 @@ def download(*packages, **kwargs):
         pkg_ret[key] = pkg_info
 
     if pkg_ret:
+        failed = [pkg for pkg in packages if pkg not in pkg_ret]
+        if failed:
+            pkg_ret['_error'] = ('The following package(s) failed to download: {0}'
+                                 .format(', '.join(failed)))
         return pkg_ret
 
     raise CommandExecutionError(
