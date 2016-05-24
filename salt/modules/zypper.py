@@ -1580,6 +1580,8 @@ def download(*packages, **kwargs):
         key = _get_first_aggregate_text(
             dld_result.getElementsByTagName('name')
         )
+        if not __salt__['lowpkg.check_sig'](dld_result.getElementsByTagName("localfile")[0].getAttribute("path")):
+            continue
         pkg_ret[key] = pkg_info
 
     if pkg_ret:
