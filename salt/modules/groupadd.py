@@ -214,7 +214,7 @@ def deluser(name, username, root=None):
                 else:
                     cmd = ('gpasswd', '--del', username, name)
                 if root is not None:
-                    cmd.extend(('-R', root))
+                    cmd.extend(('-Q', root))
                 retcode = __salt__['cmd.retcode'](cmd, python_shell=False)
             elif __grains__['kernel'] == 'OpenBSD':
                 out = __salt__['cmd.run_stdout']('id -Gn {0}'.format(username),
