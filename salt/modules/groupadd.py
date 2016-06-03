@@ -252,8 +252,7 @@ def members(name, members_list, root=None):
             cmd = ('gpasswd', '-M', members_list, name)
         elif on_suse_11:
             for old_member in __salt__['group.info'](name).get('members'):
-                __salt__['cmd.run']('groupmod -R {0} {1}'.format(old_member, name),
-                                    python_shell=False)
+                __salt__['cmd.run']('groupmod -R {0} {1}'.format(old_member, name), python_shell=False)
             cmd = ('groupmod', '-A', members_list, name)
         else:
             cmd = ('gpasswd', '--members', members_list, name)
