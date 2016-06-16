@@ -7,6 +7,7 @@ ExecStart=/usr/bin/salt-proxy --proxyid=%I
 Type=simple
 Restart=on-failure
 RestartSec=5s
+TasksMax=infinity
 
 [Install]
 WantedBy=multi-user.target
