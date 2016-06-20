@@ -240,9 +240,6 @@ class CoreGrainsTestCase(TestCase):
         '''
         Test if OS grains are parsed correctly in SLES 11 SP3
         '''
-        _path_exists_map = {
-            '/proc/1/cmdline': False
-        }
         _os_release_map = {
             'suse_release_file': '''SUSE Linux Enterprise Server 11 (x86_64)
 VERSION = 11
@@ -252,7 +249,7 @@ PATCHLEVEL = 3
             'osfullname': "SLES",
             'osrelease': '11.3',
             'osrelease_info': [11, 3],
-            'files': ["/etc/SuSE-release", _path_exists_map],
+            'files': ["/etc/SuSE-release"],
         }
         self._run_os_grains_tests(_os_release_map)
 
@@ -261,9 +258,6 @@ PATCHLEVEL = 3
         '''
         Test if OS grains are parsed correctly in SLES 11 SP4
         '''
-        _path_exists_map = {
-            '/proc/1/cmdline': False
-        }
         _os_release_map = {
             'os_release_file': {
                 'NAME': 'SLES',
@@ -278,7 +272,7 @@ PATCHLEVEL = 3
             'osfullname': "SLES",
             'osrelease': '11.4',
             'osrelease_info': [11, 4],
-            'files': ["/etc/os-release", _path_exists_map],
+            'files': ["/etc/os-release"],
         }
         self._run_os_grains_tests(_os_release_map)
 
@@ -287,9 +281,6 @@ PATCHLEVEL = 3
         '''
         Test if OS grains are parsed correctly in SLES 12
         '''
-        _path_exists_map = {
-            '/proc/1/cmdline': False
-        }
         _os_release_map = {
             'os_release_file': {
                 'NAME': 'SLES',
@@ -304,7 +295,7 @@ PATCHLEVEL = 3
             'osfullname': "SLES",
             'osrelease': '12',
             'osrelease_info': [12],
-            'files': ["/etc/os-release", _path_exists_map],
+            'files': ["/etc/os-release"],
         }
         self._run_os_grains_tests(_os_release_map)
 
@@ -313,9 +304,6 @@ PATCHLEVEL = 3
         '''
         Test if OS grains are parsed correctly in SLES 12 SP1
         '''
-        _path_exists_map = {
-            '/proc/1/cmdline': False
-        }
         _os_release_map = {
             'os_release_file': {
                 'NAME': 'SLES',
@@ -330,7 +318,7 @@ PATCHLEVEL = 3
             'osfullname': "SLES",
             'osrelease': '12.1',
             'osrelease_info': [12, 1],
-            'files': ["/etc/os-release", _path_exists_map],
+            'files': ["/etc/os-release"],
         }
         self._run_os_grains_tests(_os_release_map)
 
@@ -339,9 +327,6 @@ PATCHLEVEL = 3
         '''
         Test if OS grains are parsed correctly in openSUSE Leap 42.1
         '''
-        _path_exists_map = {
-            '/proc/1/cmdline': False
-        }
         _os_release_map = {
             'os_release_file': {
                 'NAME': 'openSUSE Leap',
@@ -356,7 +341,7 @@ PATCHLEVEL = 3
             'osfullname': "Leap",
             'osrelease': '42.1',
             'osrelease_info': [42, 1],
-            'files': ["/etc/os-release", _path_exists_map],
+            'files': ["/etc/os-release"],
         }
         self._run_os_grains_tests(_os_release_map)
 
@@ -365,9 +350,6 @@ PATCHLEVEL = 3
         '''
         Test if OS grains are parsed correctly in openSUSE Tumbleweed
         '''
-        _path_exists_map = {
-            '/proc/1/cmdline': False
-        }
         _os_release_map = {
             'os_release_file': {
                 'NAME': 'openSUSE',
@@ -382,7 +364,7 @@ PATCHLEVEL = 3
             'osfullname': "Tumbleweed",
             'osrelease': '20160504',
             'osrelease_info': [20160504],
-            'files': ["/etc/os-release", _path_exists_map],
+            'files': ["/etc/os-release"],
         }
         self._run_os_grains_tests(_os_release_map)
 
