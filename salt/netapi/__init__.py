@@ -76,9 +76,9 @@ class TokenBucket(object):
             _kwargs['fun'] = 'magic.run_with_delay'
             # If tgt is a glob we use a fixed delay for all minions
             if not isinstance(_kwargs['tgt'], list):
-                _kwargs['kwarg']['fixed_delay'] = random.randint(1, 5)
+                _kwargs.setdefault('kwarg', {})['fixed_delay'] = random.randint(1, 5)
             else:
-                _kwargs['kwarg']['minion_delay'] = {}
+                _kwargs.setdefault('kwarg', {})['minion_delay'] = {}
                 for tgt in _kwargs['tgt']:
                     _kwargs['kwarg']['minion_delay'][tgt] = random.randint(1, 5)
 
