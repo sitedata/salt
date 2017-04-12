@@ -933,6 +933,8 @@ cherrypy.tools.salt_ip_verify = cherrypy.Tool('before_handler',
 
 ###############################################################################
 
+SALT_NETAPI_CLIENT = None
+
 
 class LowDataAdapter(object):
     '''
@@ -955,7 +957,7 @@ class LowDataAdapter(object):
 
     def __init__(self):
         self.opts = cherrypy.config['saltopts']
-        self.api = salt.netapi.NetapiClient(self.opts)
+        self.api = SALT_NETAPI_CLIENT
 
     def exec_lowstate(self, client=None, token=None):
         '''
@@ -2596,6 +2598,12 @@ def get_app(opts):
     # Add Salt and salt-api config options to the main CherryPy config dict
     cherrypy.config['saltopts'] = opts
     cherrypy.config['apiopts'] = apiopts
+
+    global SALT_NETAPI_CLIENT
+    SALT_NETAPI_CLIENT = salt.netapi.NetapiClient(
+        cherrypy.config['saltopts'],
+        token_bucket_start=True
+    )
 
     root = API()  # cherrypy app
     cpyopts = root.get_conf()  # cherrypy app opts
