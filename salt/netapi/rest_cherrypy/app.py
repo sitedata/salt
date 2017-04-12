@@ -463,10 +463,11 @@ import functools
 import logging
 import json
 import os
+import random
 import signal
 import tarfile
 import time
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Lock, Value, Pipe
 
 # Import third-party libs
 # pylint: disable=import-error
@@ -913,6 +914,33 @@ def lowdata_fmt():
         cherrypy.serving.request.lowstate = data
 
 
+def token_bucket_tool():
+    '''
+    Token bucket Tool.
+    '''
+    if cherrypy.request.method.upper() != 'POST':
+        return
+    if not cherrypy.token_bucket.is_ready():
+        return
+
+    _CLIENTS_MATCHING = [
+        'local',
+        'local_async',
+        'local_batch',
+    ]
+
+    data = cherrypy.request.unserialized_data
+    data = data if isinstance(data, dict) else data[0]
+
+    if 'client' in data and data['client'] in _CLIENTS_MATCHING:
+        if cherrypy.token_bucket.get_tokens():
+            cherrypy.token_bucket.consume_tokens(1)
+        else:
+            logger.warning('Token Bucket: API is out of tokens! Adding some delay to the payload')
+            cherrypy.token_bucket.convert_to_delayed_job(data)
+        logger.debug('Token Bucket: Publishing final payload: {0}'.format(data))
+
+
 cherrypy.tools.html_override = cherrypy.Tool('on_start_resource',
         html_override_tool, priority=53)
 cherrypy.tools.salt_token = cherrypy.Tool('on_start_resource',
@@ -929,6 +957,8 @@ cherrypy.tools.hypermedia_out = cherrypy.Tool('before_handler',
         hypermedia_out)
 cherrypy.tools.salt_ip_verify = cherrypy.Tool('before_handler',
         salt_ip_verify_tool)
+cherrypy.tools.token_bucket = cherrypy.Tool('before_handler',
+        token_bucket_tool)
 
 
 ###############################################################################
@@ -951,6 +981,7 @@ class LowDataAdapter(object):
         'tools.hypermedia_in.on': True,
         'tools.lowdata_fmt.on': True,
         'tools.salt_ip_verify.on': True,
+        'tools.token_bucket.on': True,
     }
 
     def __init__(self):
@@ -2481,6 +2512,65 @@ class App(object):
         return cherrypy.lib.static.serve_file(apiopts['app'])
 
 
+class TokenBucket(object):
+    '''
+    Token Bucket rate limiting mechanism. To enable it the following settings
+    to your /etc/salt/master configuration file.
+
+    token_bucket_rate_limiting_size: 10
+    '''
+    def __init__(self, opts):
+        if 'token_bucket_rate_limiting_size' in opts:
+            self.bucket_size = opts['token_bucket_rate_limiting_size']
+            self.tokens = Value('i', self.bucket_size)
+            self.lock = Lock()
+            self.ready = True
+        else:
+            self.ready = False
+
+    def __feed_bucket(self):
+        if self.tokens.value < self.bucket_size:
+            with self.lock:
+                self.tokens.value += 1
+                logger.debug('Token Bucket: --> FEEDING BUCKET: bucket status: '
+                             '{0} tokens available'.format(self.tokens.value))
+
+    def loop(self):
+        logger.info('Token Bucket Rate Limiting is enabled. '
+                 'Bucket size: {0}'.format(self.bucket_size))
+        while True:
+            self.__feed_bucket()
+            time.sleep(1)
+
+    def get_tokens(self):
+        with self.lock:
+            return self.tokens.value
+
+    def consume_tokens(self, num):
+        with self.lock:
+            self.tokens.value -= num
+            logger.debug('Token Bucket: --> CONSUME {0} TOKENs: bucket status: '
+                         '{1} tokens available'.format(num, self.tokens.value))
+
+    def is_ready(self):
+        return self.ready
+
+    def convert_to_delayed_job(self, _kwargs):
+        if _kwargs['fun']:
+            if 'arg' not in _kwargs:
+                _kwargs['arg'] = _kwargs['fun']
+            else:
+                _kwargs['arg'].insert(0, _kwargs['fun'])
+            _kwargs['fun'] = 'magic.run_with_delay'
+            # If tgt is a glob we use a fixed delay for all minions
+            if not isinstance(_kwargs['tgt'], list):
+                _kwargs.setdefault('kwarg', {})['fixed_delay'] = random.randint(1, 5)
+            else:
+                _kwargs.setdefault('kwarg', {})['minion_delay'] = {}
+                for tgt in _kwargs['tgt']:
+                    _kwargs['kwarg']['minion_delay'][tgt] = random.randint(1, 5)
+
+
 class API(object):
     '''
     Collect configuration and URL map for building the CherryPy app
@@ -2532,6 +2622,11 @@ class API(object):
 
         self._update_url_map()
         self._setattr_url_map()
+
+        cherrypy.token_bucket = TokenBucket(self.opts)
+        if cherrypy.token_bucket.is_ready():
+            self._bucket_proc = Process(target=cherrypy.token_bucket.loop, args=())
+            self._bucket_proc.start()
 
     def get_conf(self):
         '''
