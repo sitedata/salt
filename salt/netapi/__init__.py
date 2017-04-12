@@ -5,7 +5,10 @@ Make api awesomeness
 from __future__ import absolute_import
 # Import Python libs
 import inspect
+from multiprocessing import Lock, Process, Value
 import os
+import time
+import random
 
 # Import Salt libs
 import salt.log  # pylint: disable=W0611
@@ -19,6 +22,67 @@ import salt.client.ssh.client
 import salt.exceptions
 
 
+import logging
+log = logging.getLogger(__name__)
+
+
+class TokenBucket(object):
+    '''
+    Token Bucket rate limiting mechanism. To enable it the following settings
+    to your /etc/salt/master configuration file.
+
+    token_bucket_rate_limiting_size: 10
+    '''
+    def __init__(self, opts):
+        if 'token_bucket_rate_limiting_size' in opts:
+            self.bucket_size = opts['token_bucket_rate_limiting_size']
+            self.tokens = Value('i', self.bucket_size)
+            self.lock = Lock()
+            self.ready = True
+        else:
+            self.ready = False
+
+    def __feed_bucket(self):
+        if self.tokens.value < self.bucket_size:
+            with self.lock:
+                self.tokens.value += 1
+                log.debug("--> FEEDING BUCKET: bucket status: {} tokens".format(self.tokens.value))
+
+    def loop(self):
+        log.info('Token bucket Rate Limiting is enabled. '
+                 'Bucket size: {0}'.format(self.bucket_size))
+        while True:
+            self.__feed_bucket()
+            time.sleep(1)
+
+    def get_tokens(self):
+        with self.lock:
+            return self.tokens.value
+
+    def consume_tokens(self, num):
+        with self.lock:
+            self.tokens.value -= num
+            log.debug("--> CONSUME {0} TOKENs: bucket status: {1} tokens".format(num, self.tokens.value))
+
+    def is_ready(self):
+        return self.ready
+
+    def convert_to_delayed_job(self, _kwargs):
+        if _kwargs['fun']:
+            if 'arg' not in _kwargs:
+                _kwargs['arg'] = _kwargs['fun']
+            else:
+                _kwargs['arg'].insert(0, _kwargs['fun'])
+            _kwargs['fun'] = 'magic.run_with_delay'
+            # If tgt is a glob we use a fixed delay for all minions
+            if not isinstance(_kwargs['tgt'], list):
+                _kwargs['kwarg']['fixed_delay'] = random.randint(1, 5)
+            else:
+                _kwargs['kwarg']['minion_delay'] = {}
+                for tgt in _kwargs['tgt']:
+                    _kwargs['kwarg']['minion_delay'][tgt] = random.randint(1, 5)
+
+
 class NetapiClient(object):
     '''
     Provide a uniform method of accessing the various client interfaces in Salt
@@ -29,8 +93,13 @@ class NetapiClient(object):
     >>> client.run(lowstate)
     '''
 
-    def __init__(self, opts):
+    def __init__(self, opts, token_bucket_start=False):
         self.opts = opts
+        if token_bucket_start:
+           self.token_bucket = TokenBucket(self.opts)
+           if self.token_bucket.is_ready():
+               self._bucket_proc = Process(target=self.token_bucket.loop, args=())
+               self._bucket_proc.start()
 
     def _is_master_running(self):
         '''
@@ -69,6 +138,28 @@ class NetapiClient(object):
         l_fun = getattr(self, low['client'])
         f_call = salt.utils.format_call(l_fun, low)
         return l_fun(*f_call.get('args', ()), **f_call.get('kwargs', {}))
+
+    def local_token_bucket_async(self, *args, **kwargs):
+        '''
+        Run :ref:`execution modules <all-salt.modules>` asynchronously
+        using the token bucket algorithm.
+
+        Wraps :py:meth:`salt.client.LocalClient.run_job`.
+
+        :return: job ID
+        '''
+        if not self.token_bucket.is_ready():
+            _msg = 'Client not available. Token bucket is not configured'
+            log.error(_msg)
+            raise salt.exceptions.SaltInvocationError(_msg)
+
+        local = salt.client.get_local_client(mopts=self.opts)
+        if self.token_bucket.get_tokens():
+            self.token_bucket.consume_tokens(1)
+        else:
+            self.token_bucket.convert_to_delayed_job(kwargs)
+        log.debug("Publishing final payload: {0}".format(kwargs))
+        return local.run_job(*args, **kwargs)
 
     def local_async(self, *args, **kwargs):
         '''
