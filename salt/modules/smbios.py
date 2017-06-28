@@ -96,6 +96,8 @@ def get(string, clean=True):
         return None
 
     if not clean or _dmi_isclean(string, val):
+        if string == 'system-uuid':
+           val = _fix_uuid(val)
         return val
 
 
@@ -266,6 +268,9 @@ def _dmi_data(dmi_raw, clean, fields):
                 # log.debug('DMI key {0} gained list item {1}'.format(key, val))
                 key_data[1].append(val)
 
+    if dmi_data.get('uuid'):
+        dmi_data['uuid'] = _fix_uuid(dmi_data['uuid'])
+
     return dmi_data
 
 
@@ -322,6 +327,20 @@ def _dmi_isclean(key, val):
         return not re.search(r'to be filled', val, flags=re.IGNORECASE) \
             and not re.search(r'un(known|specified)|no(t|ne)? (asset|provided|defined|available|present|specified)',
                               val, flags=re.IGNORECASE)
+
+
+def _fix_uuid(t_uuid):
+    # The UUID reported by 'smbios' module on SLES 11 system is wrong
+    # because the first fields of the UUID are not read as little-endian.
+
+    # The 'smbios' module can be called to calculate the virtualization grains,
+    # from grains/core.py. On such cases __grains__ are not even created yet
+    # and we delegates the OS version checking to grains/core.py.
+    if '__grains__' not in globals():
+       return t_uuid
+    elif __grains__.get('os') == 'SUSE' and __grains__.get('osrelease_info', [0])[0] == 11:
+       return str(uuid.UUID(bytes=uuid.UUID(t_uuid).get_bytes_le())).upper()
+    return t_uuid
 
 
 def _dmidecoder(args=None):
