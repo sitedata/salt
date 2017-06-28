@@ -20,6 +20,7 @@ import re
 import platform
 import logging
 import locale
+import uuid
 import salt.exceptions
 
 __proxyenabled__ = ['*']
@@ -1938,9 +1939,14 @@ def _hw_data(osdata):
             'uuid': __salt__['smbios.get']('system-uuid')
         }
         grains = dict([(key, val) for key, val in grains.items() if val is not None])
-        uuid = __salt__['smbios.get']('system-uuid')
-        if uuid is not None:
-            grains['uuid'] = uuid.lower()
+        sm_uuid = __salt__['smbios.get']('system-uuid')
+        if sm_uuid is not None:
+            # The UUID reported by 'smbios' module on SLES 11 system is wrong
+            # because the first fields of the UUID are not read as little-endian.
+            if osdata['os'] == 'SUSE' and osdata.get('osrelease_info', [0])[0] == 11:
+                # Set the correct UUID by reading bytes as little-endian.
+                sm_uuid = str(uuid.UUID(bytes=uuid.UUID(sm_uuid).get_bytes_le()))
+            grains['uuid'] = sm_uuid.lower()
         for serial in ('system-serial-number', 'chassis-serial-number', 'baseboard-serial-number'):
             serial = __salt__['smbios.get'](serial)
             if serial is not None:
