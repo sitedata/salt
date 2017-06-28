@@ -1580,15 +1580,6 @@ def os_data():
         osarch = grains['cpuarch']
     grains['osarch'] = osarch
 
-    grains.update(_memdata(grains))
-
-    # Get the hardware and bios data
-    grains.update(_hw_data(grains))
-
-    # Load the virtual machine info
-    grains.update(_virtual(grains))
-    grains.update(_ps(grains))
-
     if grains.get('osrelease', ''):
         osrelease_info = grains['osrelease'].split('.')
         for idx, value in enumerate(osrelease_info):
@@ -1601,6 +1592,15 @@ def os_data():
             'FreeBSD', 'OpenBSD', 'NetBSD', 'Mac', 'Raspbian') else 'osfullname']
         grains['osfinger'] = '{0}-{1}'.format(
             os_name, grains['osrelease'] if os_name in ('Ubuntu',) else grains['osrelease_info'][0])
+
+    grains.update(_memdata(grains))
+
+    # Get the hardware and bios data
+    grains.update(_hw_data(grains))
+
+    # Load the virtual machine info
+    grains.update(_virtual(grains))
+    grains.update(_ps(grains))
 
     return grains
 
