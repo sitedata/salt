@@ -1946,6 +1946,7 @@ def _hw_data(osdata):
             if osdata['os'] == 'SUSE' and osdata.get('osrelease_info', [0])[0] == 11:
                 # Set the correct UUID by reading bytes as little-endian.
                 sm_uuid = str(uuid.UUID(bytes=uuid.UUID(sm_uuid).get_bytes_le()))
+                grains['uuid_suse_sle11_fixed_flag'] = True
             grains['uuid'] = sm_uuid.lower()
         for serial in ('system-serial-number', 'chassis-serial-number', 'baseboard-serial-number'):
             serial = __salt__['smbios.get'](serial)
