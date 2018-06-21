@@ -14,6 +14,12 @@ import salt.utils.files
 import salt.utils.platform
 import salt.utils.yaml
 
+try:
+    from salt import _suse_backported_capabilities
+    HAS_SUSE_CAPABILITIES = True
+except ImportError:
+    HAS_SUSE_CAPABILITIES = False
+
 __proxyenabled__ = ['*']
 log = logging.getLogger(__name__)
 
@@ -75,3 +81,11 @@ def config():
                 log.warning("Bad syntax in grains file! Skipping.")
                 return {}
     return {}
+
+
+def suse_backported_capabilities():
+    if HAS_SUSE_CAPABILITIES:
+        return {
+            '__suse_backported_capabilities':
+                _suse_backported_capabilities.backported_capabilities
+        }
