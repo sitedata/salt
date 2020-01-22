@@ -10,7 +10,6 @@ from __future__ import absolute_import, print_function, unicode_literals
 
 import functools
 import inspect
-import logging
 import os
 import re
 import sys
@@ -24,6 +23,7 @@ from zipimport import zipimporter
 # Import salt libs
 import salt.config
 import salt.defaults.exitcodes
+import salt.log.setup as logging
 import salt.syspaths
 import salt.utils.args
 import salt.utils.context
