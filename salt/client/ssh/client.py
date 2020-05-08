@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 _LOCK = multiprocessing.Lock()
 
+
 class SSHClient(object):
     """
     Create a client object for executing routines via the salt-ssh backend

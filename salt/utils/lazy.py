@@ -8,8 +8,8 @@ from __future__ import absolute_import, unicode_literals
 
 import time
 
-import salt.log.setup as logging
 import salt.exceptions
+import salt.log.setup as logging
 
 try:
     from collections.abc import MutableMapping
