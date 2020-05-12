@@ -7,17 +7,10 @@ Lazily-evaluated data structures, primarily used by Salt's loader
 from __future__ import absolute_import, unicode_literals
 
 import time
+from collections.abc import MutableMapping
 
 import salt.exceptions
 import salt.log.setup as logging
-
-try:
-    from collections.abc import MutableMapping
-except ImportError:
-    # pylint: disable=no-name-in-module
-    from collections import MutableMapping
-
-    # pylint: enable=no-name-in-module
 
 log = logging.getLogger(__name__)
 
