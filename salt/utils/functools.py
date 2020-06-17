@@ -137,6 +137,8 @@ def call_function(salt_function, *args, **kwargs):
     for arg in expected_args:
         if arg in kw_to_arg_type:
             function_args.append(kw_to_arg_type[arg])
+            if arg in function_kwargs:
+                del function_kwargs[arg]
     _exp_prm = len(argspec.args or []) - len(argspec.defaults or [])
     _passed_prm = len(function_args)
     missing = []
