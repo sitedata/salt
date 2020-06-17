@@ -477,3 +477,16 @@ class ModuleStateTest(TestCase, LoaderModuleMockMixin):
                 ),
                 (1, 2, 3, (), {}),
             )
+
+    def test_call_function_with_spec_arg_and_kwargs(self):
+        '''
+        Test _call_function routine when some kwarg is part of function args spec.
+
+        :return:
+        '''
+        with patch.dict(module.__salt__,
+                        {'testfunc': lambda a, **kwargs: (a, kwargs)}, clear=True):
+            self.assertEqual(
+                module._call_function('testfunc', func_args=[{'a': 3, 'foo': 'bar'}]),
+                (3, {'foo': 'bar'})
+            )
